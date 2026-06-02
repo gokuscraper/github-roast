@@ -1,0 +1,32 @@
+name: Daily Restart
+
+on:
+  schedule:
+    # 每天北京时间 00:00 执行（UTC 时间 16:00）
+    - cron: '0 16 * * *'
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  restart:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Update timestamp
+        run: |
+          echo "Last restart: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" > last_restart.txt
+          echo "Updated at: $(date -u)" >> last_restart.txt
+      
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Bot"
+          git add last_restart.txt
+          git commit -m "chore: daily restart trigger - $(date -u '+%Y-%m-%d')" || echo "No changes to commit"
+          git push
