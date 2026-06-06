@@ -1,9 +1,8 @@
 import streamlit as st
-import json
 from urllib.parse import quote
 
 from i18n import _
-from lib.tweet_utils import summarize_tweets
+from lib.repo_utils import summarize_repos
 from lib.sidebar import render_sidebar
 
 render_sidebar()
@@ -15,25 +14,21 @@ if raw is None or isinstance(raw, tuple):
     st.stop()
 
 user = st.session_state.scraped_user
-tweets = st.session_state.scraped_tweets
+repos = st.session_state.scraped_repos or []
+events = st.session_state.scraped_events or []
 result = st.session_state.analysis_result
 
 CARD_CONFIG = [
-    ("roast",         "🔥", "#e53e3e",  True,  "str"),
-    ("strengths",     "💪", "#dd6b20",  False, "list"),
-    ("weaknesses",    "😴", "#3182ce",  False, "list"),
-    ("loveLife",      "❤️", "#e53e3e",  False, "str"),
-    ("money",         "💰", "#38a169",  False, "str"),
-    ("health",        "🏥", "#5a67d8",  False, "str"),
-    ("colleaguePerspective", "👥", "#d69e2e", False, "str"),
-    ("biggestGoal",   "🚀", "#805ad5",  False, "str"),
-    ("famousPersonComparison", "⭐", "#38a169", False, "str"),
-    ("pickupLines",   "💬", "#d53f8c",  False, "arr"),
-    ("previousLife",  "🙏", "#718096",  False, "str"),
-    ("animal",        "🐾", "#00a3c4",  False, "str"),
-    ("fiftyDollarThing", "👛", "#d53f8c", False, "str"),
-    ("career",        "💡", "#d69e2e",  False, "str"),
-    ("lifeSuggestion","🌱", "#319795",  False, "str"),
+    ("roast",              "🔥", "#e53e3e",  True,  "str"),
+    ("techStack",          "💻", "#dd6b20",  False, "list"),
+    ("weaknesses",         "😴", "#3182ce",  False, "list"),
+    ("openSourceInfluence","⭐", "#38a169",  False, "str"),
+    ("projectHighlights",  "🚀", "#805ad5",  False, "str"),
+    ("collaborationStyle", "👥", "#d69e2e",  False, "str"),
+    ("activityPulse",      "📊", "#0ea5e9",  False, "str"),
+    ("careerAdvice",       "💡", "#d53f8c",  False, "str"),
+    ("achievements",       "🏅", "#5a67d8",  False, "arr"),
+    ("lifeSuggestion",     "🌱", "#319795",  True,  "str"),
 ]
 
 
@@ -69,8 +64,6 @@ def _render_card(key_label, emoji, color, wide, fmt, data):
 
 
 def _card_html(key_label, emoji, color, wide, fmt, data):
-    val = data.get(key_label) if isinstance(data, dict) else None
-    # key_label is already translated; data keys are in English
     eng_key = [k for k, *_rest in CARD_CONFIG if _("card_" + k) == key_label]
     eng_key = eng_key[0] if eng_key else key_label
     val = data.get(eng_key) if isinstance(data, dict) else data
@@ -90,31 +83,110 @@ def _card_html(key_label, emoji, color, wide, fmt, data):
     </div>"""
 
 
-def _build_report_html(result: dict, username: str, display_name: str = "", avatar_url: str = "") -> str:
-    # Build each card HTML
-    cards = ""
-    for key, emoji, color, wide, fmt in CARD_CONFIG:
-        val = result.get(key)
-        if not val:
-            continue
-        border_c = color + "44"
-        col_span = "grid-column: 1 / -1;" if wide else ""
-        content = _fmt_content(fmt, val)
-        # Escape {} to avoid breaking the outer f-string
-        content = content.replace("{", "{{").replace("}", "}}")
-        card_fmt = _("card_" + key)
-        cards += (
-            '<div class="card" style="border:1px solid ' + border_c
-            + ';border-radius:16px;padding:1.2rem 1.5rem;background:' + color
-            + '08;' + col_span + '">'
-            '<div class="card-header">'
-            '<span class="card-emoji">' + emoji + '</span>'
-            '<span class="card-label" style="color:' + color + ';">' + card_fmt + '</span>'
-            '</div>'
-            '<div class="card-divider"></div>'
-            '<div class="card-body">' + content + '</div>'
-            '</div>'
-        )
+def _build_report_html(result: dict, user, summary: dict) -> str:
+    login = user.login
+    display_name = user.name or user.login
+    avatar_url = user.avatar_url
+
+    bio = (user.bio[:200] + "...") if len(user.bio) > 200 else user.bio
+    meta_parts = []
+    if user.company:
+        meta_parts.append(f"🏢 {user.company}")
+    if user.location:
+        meta_parts.append(f"📍 {user.location}")
+    if user.created_at:
+        meta_parts.append(f"📅 {user.created_at[:10]}")
+    if user.blog:
+        meta_parts.append(f"🔗 {user.blog[:40]}")
+    meta_html = f'<div style="color:#6b7280;font-size:0.9rem;margin:0.3rem 0;">{" | ".join(meta_parts)}</div>' if meta_parts else ""
+
+    stats_row = f"""<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-top:1rem;
+        padding:1rem;background:#f9fafb;border-radius:12px;text-align:center;">
+        <div><div style="font-size:1.3rem;font-weight:700;">{user.followers:,}</div><div style="font-size:0.8rem;color:#9ca3af;">{_("label_followers")}</div></div>
+        <div><div style="font-size:1.3rem;font-weight:700;">{user.following:,}</div><div style="font-size:0.8rem;color:#9ca3af;">{_("label_following")}</div></div>
+        <div><div style="font-size:1.3rem;font-weight:700;">{user.public_repos:,}</div><div style="font-size:0.8rem;color:#9ca3af;">{_("label_repos")}</div></div>
+        <div><div style="font-size:1.3rem;font-weight:700;">{user.public_gists:,}</div><div style="font-size:0.8rem;color:#9ca3af;">{_("label_gists")}</div></div>
+    </div>"""
+
+    repo_stats_html = ""
+    if summary["repos_count"]:
+        repo_stats_html = f"""<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.8rem;margin-top:0.8rem;
+            padding:1rem;background:#f9fafb;border-radius:12px;text-align:center;">
+            <div><div style="font-size:1.1rem;font-weight:600;">{summary["repos_count"]}</div><div style="font-size:0.8rem;color:#9ca3af;">{_("stat_repos")}</div></div>
+            <div><div style="font-size:1.1rem;font-weight:600;">{summary["total_stars"]:,}</div><div style="font-size:0.8rem;color:#9ca3af;">{_("stat_total_stars")}</div></div>
+            <div><div style="font-size:1.1rem;font-weight:600;">{summary["languages_count"]}</div><div style="font-size:0.8rem;color:#9ca3af;">{_("stat_languages")}</div></div>
+            <div><div style="font-size:1.1rem;font-weight:600;">{summary["events_count"]}</div><div style="font-size:0.8rem;color:#9ca3af;">{_("stat_events")}</div></div>
+        </div>"""
+
+    emojis = result.get("emojis", "")
+    about = result.get("about", "")
+    about_html = _md(about) if about else ""
+    title_text = result.get("title", "")
+    footer_text = "Powered by Github-Roast (Github照妖镜) | groast.streamlit.app"
+
+    section1 = f"""
+    <div id="report-1" style="padding:20px;">
+        <div style="text-align:center;font-size:1.6rem;font-weight:800;margin-bottom:1rem;color:#1f2937;">{title_text}</div>
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem;">
+            <img src="{avatar_url}" style="width:56px;height:56px;border-radius:50%;" onerror="this.style.display='none'">
+            <div>
+                <div style="font-size:1.4rem;font-weight:700;">{display_name}</div>
+                <div style="color:#9ca3af;">@{login}</div>
+            </div>
+        </div>
+        <div style="margin:0.5rem 0;color:#4b5563;">{bio}</div>
+        {meta_html}
+        {stats_row}
+        <div style="font-size:1.1rem;font-weight:600;margin-top:1.5rem;color:#1f2937;">📊 {_("repo_stats")}</div>
+        {repo_stats_html}
+        <div style="text-align:center;margin-top:1.5rem;">
+            <div style="font-size:2.5rem;letter-spacing:0.3rem;">{emojis}</div>
+            <div style="max-width:700px;margin:1rem auto;color:#4b5563;font-size:1rem;line-height:1.7;">{about_html}</div>
+        </div>
+        <div class="report-footer">{footer_text}</div>
+    </div>"""
+
+    card_groups = [CARD_CONFIG[:3], CARD_CONFIG[3:7], CARD_CONFIG[7:]]
+    sections_html = []
+    sec_ids = ["report-2", "report-3", "report-4"]
+    for gi, group in enumerate(card_groups):
+        cards_html = ""
+        for ci, (key, emoji, color, wide, fmt) in enumerate(group):
+            val = result.get(key)
+            if not val:
+                continue
+            border_c = color + "44"
+            col_span = "grid-column: 1 / -1;" if wide else ""
+            content = _fmt_content(fmt, val)
+            content = content.replace("{", "{{").replace("}", "}}")
+            card_fmt = _("card_" + key)
+            cards_html += (
+                '<div class="card" style="border:1px solid ' + border_c
+                + ';border-radius:16px;padding:1.2rem 1.5rem;background:' + color
+                + '08;' + col_span + '">'
+                '<div class="card-header">'
+                '<span class="card-emoji">' + emoji + '</span>'
+                '<span class="card-label" style="color:' + color + ';">' + card_fmt + '</span>'
+                '</div>'
+                '<div class="card-divider"></div>'
+                '<div class="card-body">' + content + '</div>'
+                '</div>'
+            )
+        sec_id = sec_ids[gi]
+        sections_html.append(f"""
+    <div id="{sec_id}" style="padding:20px;">
+        <div class="card-grid">{cards_html}</div>
+        <div class="report-footer">{footer_text}</div>
+    </div>""")
+
+    buttons = f"""
+    <div class="toolbar">
+        <button class="btn-download" onclick="capture('report-1','{login}_1_profile')">{_("btn_section1")}</button>
+        <button class="btn-download" onclick="capture('report-2','{login}_2_analysis_a')">{_("btn_section2")}</button>
+        <button class="btn-download" onclick="capture('report-3','{login}_3_analysis_b')">{_("btn_section3")}</button>
+        <button class="btn-download" onclick="capture('report-4','{login}_4_analysis_c')">{_("btn_section4")}</button>
+        <button class="btn-download btn-all" onclick="downloadAll()">{_("btn_download_all")}</button>
+    </div>"""
 
     return f"""<!DOCTYPE html>
 <html>
@@ -122,15 +194,8 @@ def _build_report_html(result: dict, username: str, display_name: str = "", avat
 <meta charset="utf-8">
 <style>
 * {{ margin:0; padding:0; box-sizing:border-box; }}
-body {{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-        background:#fafafa; padding:20px; }}
-.banner {{ text-align:center; font-size:1.4rem; font-weight:700; margin-bottom:1.5rem;
-           color:#1f2937; display:flex; align-items:center; justify-content:center; gap:0.5rem; }}
-.banner-avatar {{ width:40px; height:40px; border-radius:50%; }}
-.banner-name {{ }}
-.banner-username {{ color:#9ca3af; font-weight:400; font-size:1rem; }}
-.card-grid {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(380px,1fr));
-             gap:1.5rem; max-width:900px; margin:0 auto; }}
+body {{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#fafafa; }}
+.card-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(380px,1fr)); gap:1.5rem; max-width:900px; margin:0 auto; }}
 .card {{ }}
 .card-header {{ display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem; }}
 .card-emoji {{ font-size:1.3rem; }}
@@ -141,55 +206,50 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-seri
 .card-body li {{ margin-bottom:0.4rem; }}
 .card-body strong {{ font-weight:600; }}
 .report-footer {{ text-align:center; margin-top:2rem; padding-top:1rem; border-top:1px solid #e5e7eb; color:#9ca3af; font-size:0.85rem; }}
-.toolbar {{ text-align:center; margin-top:2rem; }}
-.btn-download {{ background:#dc2626; color:#fff; border:none; border-radius:8px;
-                 padding:0.75rem 2rem; font-size:1rem; font-weight:600; cursor:pointer;
-                 box-shadow:0 2px 8px rgba(220,38,38,0.4); }}
+.toolbar {{ text-align:center; padding:20px; display:flex; flex-wrap:wrap; justify-content:center; gap:0.5rem; }}
+.btn-download {{ background:#dc2626; color:#fff; border:none; border-radius:8px; padding:0.6rem 1.2rem; font-size:0.9rem; font-weight:600; cursor:pointer; }}
 .btn-download:hover {{ background:#ef4444; }}
+.btn-all {{ background:#1f2937; }}
+.btn-all:hover {{ background:#374151; }}
 </style>
 </head>
 <body>
-<div id="report">
-    <div class="banner">
-        <img src="{avatar_url}" class="banner-avatar" onerror="this.style.display='none'">
-        <span class="banner-name">{display_name}</span>
-        <span class="banner-username">@{username}</span>
-        &mdash; {_("report_title")}
-    </div>
-    <div class="card-grid">{cards}</div>
-    <div class="report-footer">Powered by X-POSE (X照妖镜) | xpose7.streamlit.app</div>
-</div>
-<div class="toolbar">
-    <button class="btn-download" onclick="capture()">{_("btn_download")}</button>
-</div>
+{section1}
+{sections_html[0]}
+{sections_html[1]}
+{sections_html[2]}
+{buttons}
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
-function capture() {{
-    html2canvas(document.getElementById('report'), {{ scale:2, useCORS:true }})
+var username = '{login}';
+function capture(id, name) {{
+    html2canvas(document.getElementById(id), {{ scale:2, useCORS:true }})
         .then(function(canvas) {{
             var link = document.createElement('a');
-            link.download = '{username}_report.png';
+            link.download = name + '.png';
             link.href = canvas.toDataURL('image/png');
             link.click();
         }})
-        .catch(function(err) {{
-            document.getElementById('err').textContent = '截图失败: ' + err.message;
-        }});
+        .catch(function(err) {{ document.getElementById('err').textContent = '截图失败: ' + err.message; }});
+}}
+function downloadAll() {{
+    capture('report-1', username + '_1_profile');
+    setTimeout(function() {{ capture('report-2', username + '_2_analysis_a'); }}, 500);
+    setTimeout(function() {{ capture('report-3', username + '_3_analysis_b'); }}, 1000);
+    setTimeout(function() {{ capture('report-4', username + '_4_analysis_c'); }}, 1500);
 }}
 </script>
-<p id="err" style="color:red;text-align:center;margin-top:0.5rem;"></p>
+<p id="err" style="color:red;text-align:center;padding:0 20px 20px;"></p>
 </body>
 </html>"""
 
 
 def _on_analyze():
-    from lib.ai import analyze_personality
-    from scraper import shutdown
+    from lib.ai import analyze_developer
 
     with st.spinner(_("spinner_ai")):
-        shutdown()
         try:
-            r = analyze_personality(user, tweets, lang=st.session_state.get("lang", "zh"))
+            r = analyze_developer(user, repos, events, lang=st.session_state.get("lang", "zh"))
             st.session_state.analysis_result = r
             st.rerun()
         except Exception as e:
@@ -202,48 +262,68 @@ st.markdown(
     f"<h1 style='margin-bottom:0;'>{_('analysis_title')}</h1>",
     unsafe_allow_html=True,
 )
-st.caption(f"@{user.username}")
-
+st.caption(f"@{user.login}")
 
 # Profile card
 with st.container():
     cols = st.columns([1, 4])
     with cols[0]:
-        if user.avatar:
-            st.image(user.avatar, width=96)
+        if user.avatar_url:
+            st.image(user.avatar_url, width=96)
     with cols[1]:
-        name = user.name or user.username
+        name = user.name or user.login
         bio = (user.bio[:150] + "...") if len(user.bio) > 150 else user.bio
         st.markdown(f"**<span style='font-size:1.3rem'>{name}</span>**", unsafe_allow_html=True)
-        st.caption(f"@{user.username}")
+        st.caption(f"@{user.login}")
+        meta_parts = []
+        if user.company:
+            meta_parts.append(f"🏢 {user.company}")
         if user.location:
-            st.caption(f"📍 {user.location}")
-        st.markdown(bio)
+            meta_parts.append(f"📍 {user.location}")
+        if user.created_at:
+            meta_parts.append(f"📅 {user.created_at[:10]}")
+        if user.blog:
+            meta_parts.append(f"🔗 {user.blog[:40]}")
+        if meta_parts:
+            st.caption(" | ".join(meta_parts))
+        if bio:
+            st.markdown(bio)
 
     s1, s2, s3, s4 = st.columns(4)
     s1.metric(_("label_followers"), f"{user.followers:,}")
     s2.metric(_("label_following"), f"{user.following:,}")
-    s3.metric(_("label_tweets"), f"{user.tweets_count:,}")
-    s4.metric(_("label_verified"), "✅" if user.verified else "—")
+    s3.metric(_("label_repos"), f"{user.public_repos:,}")
+    s4.metric(_("label_gists"), f"{user.public_gists:,}")
 
 st.divider()
 
-# Tweet stats
-summary = summarize_tweets(tweets)
-if summary["count"]:
-    st.markdown(f"### 📊 {_('tweet_stats')}")
-    r1, r2, r3, r4, r5 = st.columns(5)
-    r1.metric(_("stat_count"), summary["count"])
-    r2.metric(_("stat_avg_likes"), f"{summary['avg_likes']:,}")
-    r3.metric(_("stat_max_likes"), f"{summary['max_likes']:,}")
-    r4.metric(_("stat_avg_views"), f"{summary['avg_views']:,}")
-    r5.metric(_("stat_total_rts"), f"{summary['total_retweets']:,}")
+# Repo stats
+summary = summarize_repos(repos, events)
+if summary["repos_count"]:
+    st.markdown(f"### 📊 {_('repo_stats')}")
+    r1, r2, r3, r4 = st.columns(4)
+    r1.metric(_("stat_repos"), summary["repos_count"])
+    r2.metric(_("stat_total_stars"), f"{summary['total_stars']:,}")
+    r3.metric(_("stat_languages"), summary["languages_count"])
+    r4.metric(_("stat_events"), summary["events_count"])
+
+    if summary["top_languages"]:
+        st.caption(" | ".join(
+            f"{l['name']} ({l['count']})" for l in summary["top_languages"][:6]
+        ))
     st.divider()
 
 # AI Analysis
 st.markdown(f"### ✨ {_('ai_section_title')}")
 
 if result:
+    title = result.get("title", "")
+    if title:
+        st.markdown(
+            f"<p style='text-align:center;font-size:2rem;font-weight:800;color:#1f2937;'>{title}</p>",
+            unsafe_allow_html=True,
+        )
+
     emojis = result.get("emojis", "")
     if emojis:
         st.markdown(
@@ -258,15 +338,13 @@ if result:
             unsafe_allow_html=True,
         )
 
-    # Share to X
-    share_txt = _("share_text").format(user=user.username)
+    share_txt = _("share_text").format(user=user.login)
     share_url = f"https://twitter.com/intent/tweet?text={quote(share_txt)}"
     c1, c2 = st.columns([1, 8])
     with c1:
         st.link_button(_("share_x"), share_url)
 
-    # Build report HTML with cards + screenshot button
-    report_html = _build_report_html(result, user.username, user.name, user.avatar)
+    report_html = _build_report_html(result, user, summary)
     st.components.v1.html(report_html, height=1800, scrolling=True)
 
     st.divider()
@@ -278,6 +356,5 @@ else:
     if st.button(_("btn_run_ai"), type="primary", use_container_width=True):
         _on_analyze()
 
-# Footer nav
 st.divider()
 st.page_link("streamlit_app.py", label=_("goto_home"), use_container_width=True)

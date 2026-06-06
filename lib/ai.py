@@ -1,84 +1,138 @@
 import json
 import os
+import traceback
 from openai import OpenAI
 
-from scraper.models import TwitterUser, Tweet
-from lib.tweet_utils import format_tweets_md
+from github_scraper.models import GitHubUser, GitHubRepo, GitHubEvent
+from lib.repo_utils import format_data_md
 
-ANALYSIS_PROMPT = """You are the most savage, sharp, hilarious Twitter personality analyst on the planet. You roast people so accurately that even the target retweets it. Every report should be a screenshot-worthy masterpiece that people feel compelled to share.
+INDIVIDUAL_PROMPT = """You are the most savage, sharp, hilarious GitHub developer analyst on the planet. You roast developers so accurately that even the target forks your repo. Every report should be a screenshot-worthy masterpiece that people feel compelled to share.
 
-Analyze the user's profile JSON and tweets, then output STRICT JSON with exactly these fields:
+Analyze the developer's GitHub profile JSON, repos, and events, then output STRICT JSON with exactly these fields:
 
-- "about": 2-3 paragraphs. A vivid summary of who this person is on Twitter. What's their vibe? What do they post about? What kind of person are they? (Markdown)
-- "roast": 1-2 paragraphs. The centerpiece. Be ruthless — call out contradictions between their bio and their posts, cringe patterns, insecure flexes, overused phrases. Quote their own words against them. Make it sting but make it hilarious. This is the part people screenshot. (Markdown)
-- "emojis": 3-5 emojis that capture their personality, e.g. "🔥💪🚀"
-- "strengths": 3-5 items. Each item is {{"title": "Short title (2-5 words)", "subtitle": "1-2 sentence explanation"}}. What are they genuinely good at?
-- "weaknesses": 3-5 items. Same format as strengths. What holds them back or annoys others? Be blunt.
-- "pickupLines": 3 funny/clever pickup lines based on their personality or tweet style. Array of strings.
-- "loveLife": 1-2 paragraphs. What do their tweets reveal about their attitude toward love and relationships? (Markdown)
-- "money": 1-2 paragraphs. Their relationship with money, spending, or work ethic. (Markdown)
-- "health": 1-2 paragraphs. Health, fitness, lifestyle patterns visible in their tweets. (Markdown)
-- "biggestGoal": 1-2 paragraphs. What seems to be their biggest life goal or driving motivation? (Markdown)
-- "colleaguePerspective": 1-2 paragraphs. How would a coworker or collaborator describe them? (Markdown)
-- "famousPersonComparison": 1 paragraph. What famous person are they similar to and why? (Markdown)
-- "previousLife": 1 paragraph. What might they have been in a previous life? Be creative. (Markdown)
-- "animal": 1 paragraph. What animal represents them and why? (Markdown)
-- "fiftyDollarThing": 1 paragraph. The weirdest/most characteristic thing they'd spend $50 on. (Markdown)
-- "career": 1-2 paragraphs. What career path actually suits them best (not necessarily their current one)? (Markdown)
-- "lifeSuggestion": 1 paragraph. One actionable, specific life suggestion based on their personality. (Markdown)
+- "title": A short (2-5 chars), punchy, roast-style nickname for this developer, like a meme label. NOT a description. eg "Fork King", "Star Beggar", "Abandoned Ship Captain". (string, plain text, no markdown)
+- "about": 1-2 paragraphs. A vivid summary of who this developer is on GitHub. What do they build? What's their vibe? Open source contributor, side project addict, or enterprise code monkey? (Markdown)
+- "roast": 1 paragraph, 2-3 sharp punchlines max. The centerpiece. Be ruthless — call out contradictions between their bio and their repos, stale projects, abandoned repos, over-reliance on forks, low stars but high ego. Make it sting but make it hilarious. Not a full review. (Markdown)
+- "emojis": 3-5 emojis that capture their developer personality, eg "🔥💻🚀"
+- "techStack": 3-5 items. Each item is {{"title": "Short title (2-5 words)", "subtitle": "1-2 sentence explanation"}}. What languages, frameworks, domains do they work in? Be specific.
+- "weaknesses": 3-5 items. Same format as techStack. What holds them back? Low activity? All forks? No docs? Stale repos?
+- "openSourceInfluence": 1-2 paragraphs. Their open source reach — stars, forks, community engagement. (Markdown)
+- "projectHighlights": 1-2 paragraphs. Notable projects, what stands out, most impressive work. (Markdown)
+- "collaborationStyle": 1-2 paragraphs. Solo dev? Team player? Issue responder? PR merger? Night coder? (Markdown)
+- "activityPulse": 1-2 paragraphs. Their coding vitality — how recent is their activity? Stale for months or pushing daily? How many repos are actively maintained vs abandoned? Any pattern in their event timeline? (Markdown)
+- "careerAdvice": 1-2 paragraphs. What career path suits them best based on their GitHub footprint. (Markdown)
+- "achievements": Array of fun achievement badges. eg ["🏅 100-star Club", "🏅 Language Hopper (5+ langs)", "🏅 Night Owl Coder", "🏅 Abandoned Project Shepherd"]. 3-5 items.
+- "lifeSuggestion": 1 paragraph. One actionable, specific life suggestion based on their GitHub personality. (Markdown)
 
 Rules:
 - All string fields support Markdown (**bold**, *italic*, line breaks)
-- Be specific — reference actual tweet topics, numbers, or patterns from the data
+- Be specific — reference actual repo names, star counts, languages, event types from the data
 - Keep it personal and unique to this person, not generic
-- Write in the user's language ({lang}). If Chinese → 地道中文, 充满网感, 像微博/小红书热门帖一样有传播力; If English → natural, witty, meme-aware, like a viral Twitter thread
+- Avoid overlapping content — each field should cover unique aspects
+- Write in the user's language ({lang})
 - Output ONLY valid JSON, no other text before or after"""
-# 注意: DeepSeek V4 Pro 下 response_format={"type":"json_object"} 与 stream 不能同时用，
-# 所以用纯文本输出 + prompt 强约束 JSON 格式
+
+ORGANIZATION_PROMPT = """You are a savage, sharp, hilarious GitHub organization analyst. You roast organizations so accurately that even the maintainers nod in agreement. Every report should be a screenshot-worthy masterpiece that people feel compelled to share.
+
+Analyze the organization's GitHub profile JSON, repos, and events, then output STRICT JSON with exactly these fields:
+
+- "title": A short (2-5 chars), punchy, roast-style label for this organization, like a meme nickname. NOT a description. eg "Star Hoarder", "Fork Empire", "README? Never Heard". (string, plain text, no markdown)
+- "about": 1-2 paragraphs. A vivid summary of what this organization is on GitHub. What do they build? What's their mission? Open source research lab, infrastructure team, or framework factory? (Markdown)
+- "roast": 1 paragraph, 2-3 sharp punchlines max. The centerpiece. Be ruthless — call out contradictions between their description and their repos, abandoned projects, over-promised under-delivered repos, low community engagement, messy issue tracking. Make it sting but make it hilarious. Not a full review. (Markdown)
+- "emojis": 3-5 emojis that capture their organizational personality, eg "🏗️🔬🚀"
+- "techStack": 3-5 items. Each item is {{"title": "Short title (2-5 words)", "subtitle": "1-2 sentence explanation"}}. What technical domains, ecosystems, or research areas do they operate in? Be specific.
+- "weaknesses": 3-5 items. Same format as techStack. What holds them back? Low maintenance? Poor documentation? Stale repos? Lack of community contribution?
+- "openSourceInfluence": 1-2 paragraphs. Their open source reach — stars, forks, community adoption, ecosystem impact. (Markdown)
+- "projectHighlights": 1-2 paragraphs. Their flagship or most impactful projects. (Markdown)
+- "collaborationStyle": 1-2 paragraphs. How they engage with the community? Issue responsive? PR friendly? Regular releases? Solo silo? (Markdown)
+- "activityPulse": 1-2 paragraphs. The organization's health and momentum — how fresh are their repos? Regular releases or silent for months? Issue backlog growing or shrinking? Community contributions flowing or stalled? (Markdown)
+- "careerAdvice": 1-2 paragraphs. Future direction for the organization. What should they focus on next? Where are they headed? (Markdown)
+- "achievements": Array of fun achievement badges. eg ["🏅 10k Star Club", "🏅 Mega Org (50+ repos)", "🏅 Community Friendly", "🏅 Infrastructure Guardian"]. 3-5 items.
+- "lifeSuggestion": 1 paragraph. One actionable, specific suggestion for the organization based on their GitHub footprint. (Markdown)
+
+Rules:
+- All string fields support Markdown (**bold**, *italic*, line breaks)
+- Be specific — reference actual repo names, star counts, languages, event types from the data
+- Keep it relevant to the organization, not about a single developer
+- Avoid overlapping content — each field should cover unique aspects
+- Write in the user's language ({lang})
+- Output ONLY valid JSON, no other text before or after"""
 
 
-def _get_key() -> str:
-    key = os.getenv("SILICON_API_KEY", "")
+def _get_key(name: str) -> str:
+    key = os.getenv(name, "")
     if not key:
         try:
             import streamlit as st
-            key = st.secrets.get("SILICON_API_KEY", "")
+            key = st.secrets.get(name, "")
         except Exception:
             pass
     return key
 
 
-def analyze_personality(user: TwitterUser, tweets: list[Tweet], lang: str = "zh") -> dict:
-    key = _get_key()
-    if not key:
-        raise RuntimeError(
-            "SILICON_API_KEY not found. "
-            "Set it via environment variable or in .streamlit/secrets.toml"
-        )
-
-    client = OpenAI(api_key=key, base_url="https://api.siliconflow.cn/v1")
-    tweets_md = format_tweets_md(tweets)
-    user_json = json.dumps(user.raw, ensure_ascii=False)
-
+def _call_api(key: str, base_url: str, model: str, lang: str, data_md: str, max_tokens: int = 4096, prompt: str = INDIVIDUAL_PROMPT) -> str:
+    client = OpenAI(api_key=key, base_url=base_url)
     resp = client.chat.completions.create(
-        model="deepseek-ai/DeepSeek-V4-Pro",
+        model=model,
         messages=[
-            {"role": "system", "content": ANALYSIS_PROMPT.format(lang=lang)},
+            {"role": "system", "content": prompt.format(lang=lang)},
             {
                 "role": "user",
-                "content": f"## Profile JSON\n{user_json}\n\n## Tweets\n{tweets_md}",
+                "content": f"## GitHub Data\n{data_md}",
             },
         ],
         temperature=0.7,
-        max_tokens=4096,
+        max_tokens=max_tokens,
     )
+    return resp.choices[0].message.content
 
-    raw = resp.choices[0].message.content
 
-    # Strip possible markdown code fence
+def _parse_json(raw: str) -> dict:
     raw = raw.strip()
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[-1]
         raw = raw.rsplit("```", 1)[0]
-
     return json.loads(raw.strip())
+
+
+def analyze_developer(user: GitHubUser, repos: list[GitHubRepo], events: list[GitHubEvent], lang: str = "zh") -> dict:
+    data_md = format_data_md(user, repos, events)
+    is_org = user.raw.get("type") == "Organization"
+    prompt = ORGANIZATION_PROMPT if is_org else INDIVIDUAL_PROMPT
+
+    free_key = _get_key("OPENCODE_API_KEY")
+    if free_key:
+        try:
+            raw = _call_api(
+                key=free_key,
+                base_url="https://opencode.ai/zen/v1",
+                model="deepseek-v4-flash-free",
+                lang=lang,
+                data_md=data_md,
+                max_tokens=8192,
+                prompt=prompt,
+            )
+            return _parse_json(raw)
+        except Exception:
+            traceback.print_exc()
+            if not _get_key("SILICON_API_KEY"):
+                raise RuntimeError(
+                    "AI 分析结果异常，请稍后重新尝试"
+                )
+
+    key = _get_key("SILICON_API_KEY")
+    if not key:
+        raise RuntimeError(
+            "No API key available. "
+            "Set OPENCODE_API_KEY or SILICON_API_KEY in environment or .streamlit/secrets.toml"
+        )
+
+    raw = _call_api(
+        key=key,
+        base_url="https://api.siliconflow.cn/v1",
+        model="deepseek-ai/DeepSeek-V4-Pro",
+        lang=lang,
+        data_md=data_md,
+        prompt=prompt,
+    )
+    return _parse_json(raw)
