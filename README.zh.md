@@ -18,6 +18,15 @@
 
 Github照妖镜只需一个 GitHub 用户名或仓库链接，就能生成一份包含 13 个维度的 AI 毒舌分析报告。输入 GitHub 账号 → 抓取公开资料、仓库和动态 → DeepSeek AI 生成一份又狠又准的分析，涵盖吐槽、技术栈、弱点、职业建议等。
 
+## 预览
+
+<p align="center">
+  <img src="case/cn/torvalds_1_profile.png" width="45%" alt="资料+统计">
+  <img src="case/cn/torvalds_2_analysis_a.png" width="45%" alt="吐槽+分析">
+  <br>
+  <em>资料+统计（左）和 吐槽+技术栈+弱点（右）</em>
+</p>
+
 ## 功能
 
 - **抓取** — 通过 GitHub REST API 获取用户信息、仓库列表（最多 100 个）和公开动态，无需浏览器

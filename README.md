@@ -18,6 +18,15 @@
 
 Github-Roast transforms any GitHub username or repo URL into a 13-dimension AI roast report. Enter a GitHub handle → scrape their public profile, repos & events → DeepSeek AI generates a hilarious, brutally honest analysis covering roast, tech stack, weaknesses, career advice, and more.
 
+## Preview
+
+<p align="center">
+  <img src="case/torvalds_1_profile.png" width="45%" alt="Profile & Stats">
+  <img src="case/torvalds_2_analysis_a.png" width="45%" alt="Roast & Analysis">
+  <br>
+  <em>Profile + Stats (left) and Roast + Tech Stack + Weaknesses (right)</em>
+</p>
+
 ## Features
 
 - **Scrape** — fetches profile, repos (up to 100), and public events via GitHub REST API (no browser needed)
