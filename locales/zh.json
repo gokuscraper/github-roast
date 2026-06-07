@@ -26,7 +26,7 @@
   "ai_hint": "点击下方按钮，AI 将对 GitHub 数据进行深度开发者画像分析。",
   "btn_run_ai": "✨ AI 开发者分析",
   "btn_rerun_ai": "🔄 重新分析",
-  "spinner_ai": "AI 正在分析... 这可能需要 10-20 秒。",
+  "spinner_ai": "AI 正在分析... 这可能需要 30-60 秒。",
   "nav_home": "🏠 首页",
   "nav_analysis": "📊 分析报告",
   "report_title": "开发者分析报告",

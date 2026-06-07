@@ -26,7 +26,7 @@
   "ai_hint": "Click the button below for deep developer personality analysis.",
   "btn_run_ai": "✨ AI Developer Analysis",
   "btn_rerun_ai": "🔄 Re-analyze",
-  "spinner_ai": "AI analyzing... This may take 10-20 seconds.",
+  "spinner_ai": "AI analyzing... This may take 30-60 seconds.",
   "nav_home": "🏠 Home",
   "nav_analysis": "📊 Analysis",
   "report_title": "Developer Analysis Report",
