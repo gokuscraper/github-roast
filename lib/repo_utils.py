@@ -43,13 +43,22 @@ def format_data_md(user: GitHubUser, repos: list[GitHubRepo], events: list[GitHu
     return "\n\n---\n\n".join(parts)
 
 
-def summarize_repos(repos: list[GitHubRepo], events: list[GitHubEvent]) -> dict:
+def summarize_repos(repos: list[GitHubRepo], events: list[GitHubEvent], followers: int = 0) -> dict:
     total_stars = sum(r.stars for r in repos)
     languages = [r.language for r in repos if r.language]
     lang_counts = Counter(languages)
     top_langs = [{"name": k, "count": v} for k, v in lang_counts.most_common(10)]
 
     event_types = Counter(e.type for e in events)
+
+    fork_count = sum(1 for r in repos if r.is_fork)
+    original_count = sum(1 for r in repos if not r.is_fork)
+    account_value = max(0,
+        total_stars * 5 +
+        followers * 10 +
+        original_count * 30 -
+        fork_count * 20
+    )
 
     return {
         "repos_count": len(repos),
@@ -59,6 +68,7 @@ def summarize_repos(repos: list[GitHubRepo], events: list[GitHubEvent]) -> dict:
         "top_languages": top_langs,
         "events_count": len(events),
         "event_types": dict(event_types.most_common(5)),
-        "fork_count": sum(1 for r in repos if r.is_fork),
-        "original_count": sum(1 for r in repos if not r.is_fork),
+        "fork_count": fork_count,
+        "original_count": original_count,
+        "account_value": account_value,
     }

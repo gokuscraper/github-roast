@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import traceback
 from openai import OpenAI
 
@@ -102,23 +103,27 @@ def analyze_developer(user: GitHubUser, repos: list[GitHubRepo], events: list[Gi
 
     free_key = _get_key("OPENCODE_API_KEY")
     if free_key:
-        try:
-            raw = _call_api(
-                key=free_key,
-                base_url="https://opencode.ai/zen/v1",
-                model="deepseek-v4-flash-free",
-                lang=lang,
-                data_md=data_md,
-                max_tokens=8192,
-                prompt=prompt,
-            )
-            return _parse_json(raw)
-        except Exception:
-            traceback.print_exc()
-            if not _get_key("SILICON_API_KEY"):
-                raise RuntimeError(
-                    "AI 分析结果异常，请稍后重新尝试"
+        for attempt in range(3):
+            try:
+                raw = _call_api(
+                    key=free_key,
+                    base_url="https://opencode.ai/zen/v1",
+                    model="deepseek-v4-flash-free",
+                    lang=lang,
+                    data_md=data_md,
+                    max_tokens=8192,
+                    prompt=prompt,
                 )
+                return _parse_json(raw)
+            except Exception:
+                if attempt < 2:
+                    time.sleep(0.5)
+                    continue
+                traceback.print_exc()
+                if not _get_key("SILICON_API_KEY"):
+                    raise RuntimeError(
+                        "AI 分析结果异常，请稍后重新尝试"
+                    )
 
     key = _get_key("SILICON_API_KEY")
     if not key:

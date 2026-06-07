@@ -22,6 +22,6 @@ def render_sidebar():
         if gzh.exists():
             st.image(str(gzh), width=150)
             st.markdown(
-                "<p style='text-align:left;padding-left:25%;color:#9ca3af;font-size:0.85rem;margin-top:0.3rem;'>公众号-反馈/建议/防失联</p>",
+                "<p style='text-align:left;color:#9ca3af;font-size:0.85rem;margin-top:0.3rem;'>公众号-反馈/建议/防失联</p>",
                 unsafe_allow_html=True,
             )

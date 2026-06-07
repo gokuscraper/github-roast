@@ -118,6 +118,15 @@ def _build_report_html(result: dict, user, summary: dict) -> str:
             <div><div style="font-size:1.1rem;font-weight:600;">{summary["events_count"]}</div><div style="font-size:0.8rem;color:#9ca3af;">{_("stat_events")}</div></div>
         </div>"""
 
+    raw_value = summary.get("account_value", 0)
+    is_zh = st.session_state.get("lang", "zh") == "zh"
+    currency = "¥" if is_zh else "$"
+    value = raw_value if is_zh else round(raw_value / 7)
+    value_label = _("label_account_value")
+    value_html = f"""<div style="text-align:center;margin-top:1rem;padding:0.8rem;background:linear-gradient(135deg,#fef3c7,#fde68a);border-radius:12px;font-size:1.1rem;font-weight:700;">
+  {value_label} <span style="font-size:1.4rem;">{currency}{value:,}</span>
+</div>"""
+
     emojis = result.get("emojis", "")
     about = result.get("about", "")
     about_html = _md(about) if about else ""
@@ -139,6 +148,7 @@ def _build_report_html(result: dict, user, summary: dict) -> str:
         {stats_row}
         <div style="font-size:1.1rem;font-weight:600;margin-top:1.5rem;color:#1f2937;">📊 {_("repo_stats")}</div>
         {repo_stats_html}
+        {value_html}
         <div style="text-align:center;margin-top:1.5rem;">
             <div style="font-size:2.5rem;letter-spacing:0.3rem;">{emojis}</div>
             <div style="max-width:700px;margin:1rem auto;color:#4b5563;font-size:1rem;line-height:1.7;">{about_html}</div>
@@ -298,7 +308,7 @@ with st.container():
 st.divider()
 
 # Repo stats
-summary = summarize_repos(repos, events)
+summary = summarize_repos(repos, events, followers=user.followers)
 if summary["repos_count"]:
     st.markdown(f"### 📊 {_('repo_stats')}")
     r1, r2, r3, r4 = st.columns(4)
