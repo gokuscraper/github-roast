@@ -16,7 +16,7 @@
 
 ## Overview
 
-Github-Roast transforms any GitHub username or repo URL into a 13-dimension AI roast report. Enter a GitHub handle → scrape their public profile, repos & events → DeepSeek AI generates a hilarious, brutally honest analysis covering roast, tech stack, weaknesses, career advice, and more.
+Github-Roast transforms any GitHub username or repo URL into a 13-dimension AI roast report — plus a **custom formula that calculates your GitHub account's monetary value**. Enter a GitHub handle → scrape their public profile, repos & events → DeepSeek AI generates a hilarious, brutally honest analysis covering roast, tech stack, weaknesses, career advice, and more.
 
 ## Preview
 
@@ -24,7 +24,7 @@ Github-Roast transforms any GitHub username or repo URL into a 13-dimension AI r
   <img src="case/torvalds_1_profile.png" width="45%" alt="Profile & Stats">
   <img src="case/torvalds_2_analysis_a.png" width="45%" alt="Roast & Analysis">
   <br>
-  <em>Profile + Stats (left) and Roast + Tech Stack + Weaknesses (right)</em>
+  <em>Profile + Stats + Account Value (left) and Roast + Tech Stack + Weaknesses (right)</em>
 </p>
 
 ## Features
@@ -32,6 +32,7 @@ Github-Roast transforms any GitHub username or repo URL into a 13-dimension AI r
 - **Scrape** — fetches profile, repos (up to 100), and public events via GitHub REST API (no browser needed)
 - **Analyze** — sends formatted data to DeepSeek V4 Flash (free) or V4 Pro, returns structured JSON
 - **13 Report Cards** — about, roast, tech stack, weaknesses, open source influence, project highlights, collaboration style, activity pulse, career advice, achievements, life suggestion
+- **Account Value** — proprietary formula calculates your GitHub worth in ¥ or $ based on stars, followers, original repos, and forks
 - **Download as Image** — section-by-section PNG export via html2canvas, plus "Download All"
 - **Share to X** — pre-filled tweet with your report card
 - **Bilingual UI** — Simplified Chinese / English toggle
