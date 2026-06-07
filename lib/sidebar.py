@@ -18,10 +18,19 @@ def render_sidebar():
 
         st.markdown("<div style='flex:1'></div>", unsafe_allow_html=True)
 
-        gzh = Path(__file__).resolve().parent.parent / "gzh.jpg"
-        if gzh.exists():
-            st.image(str(gzh), width=150)
+        lang = st.session_state.get("lang", "zh")
+        if lang == "zh":
+            gzh = Path(__file__).resolve().parent.parent / "gzh.jpg"
+            if gzh.exists():
+                st.image(str(gzh), width=150)
+                st.markdown(
+                    "<p style='text-align:left;color:#9ca3af;font-size:0.85rem;margin-top:0.3rem;'>公众号-反馈/建议/防失联</p>",
+                    unsafe_allow_html=True,
+                )
+        else:
             st.markdown(
-                "<p style='text-align:left;color:#9ca3af;font-size:0.85rem;margin-top:0.3rem;'>公众号-反馈/建议/防失联</p>",
+                "<p style='text-align:left;color:#9ca3af;font-size:0.85rem;margin-top:0.3rem;'>"
+                "𝕏 / Twitter: <a href='https://x.com/pachong888' target='_blank' style='color:#1da1f2;'>@pachong888</a>"
+                "</p>",
                 unsafe_allow_html=True,
             )
