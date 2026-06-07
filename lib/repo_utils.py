@@ -54,7 +54,7 @@ def summarize_repos(repos: list[GitHubRepo], events: list[GitHubEvent], follower
     fork_count = sum(1 for r in repos if r.is_fork)
     original_count = sum(1 for r in repos if not r.is_fork)
     account_value = max(0,
-        total_stars * 5 +
+        total_stars * 2 +
         followers * 10 +
         original_count * 30 -
         fork_count * 20
