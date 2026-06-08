@@ -88,6 +88,14 @@ def _build_report_html(result: dict, user, summary: dict) -> str:
     display_name = user.name or user.login
     avatar_url = user.avatar_url
 
+    import base64, urllib.request
+    try:
+        _resp = urllib.request.urlopen(urllib.request.Request(avatar_url, headers={"User-Agent": "Mozilla/5.0"}), timeout=5)
+        _b64 = base64.b64encode(_resp.read()).decode()
+        avatar_url = f"data:image/png;base64,{_b64}"
+    except Exception:
+        pass
+
     bio = (user.bio[:200] + "...") if len(user.bio) > 200 else user.bio
     meta_parts = []
     if user.company:
