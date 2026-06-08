@@ -87,13 +87,6 @@ def _build_report_html(result: dict, user, summary: dict) -> str:
     login = user.login
     display_name = user.name or user.login
     avatar_url = user.avatar_url
-    import base64, urllib.request
-    try:
-        _resp = urllib.request.urlopen(urllib.request.Request(avatar_url, headers={"User-Agent": "Mozilla/5.0"}), timeout=5)
-        avatar_b64 = base64.b64encode(_resp.read()).decode()
-        avatar_download = f"data:image/png;base64,{avatar_b64}"
-    except Exception:
-        avatar_download = avatar_url
 
     bio = (user.bio[:200] + "...") if len(user.bio) > 200 else user.bio
     meta_parts = []
@@ -239,7 +232,7 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-seri
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
 var username = '{login}';
-var avatarDownload = '{avatar_download}';
+var avatarUrl = '{avatar_url}';
 function capture(id, name) {{
     html2canvas(document.getElementById(id), {{ scale:2, useCORS:true }})
         .then(function(canvas) {{
@@ -251,18 +244,17 @@ function capture(id, name) {{
         .catch(function(err) {{ document.getElementById('err').textContent = '截图失败: ' + err.message; }});
 }}
 function downloadAvatar() {{
-    var img = new Image();
-    img.onload = function() {{
-        var c = document.createElement('canvas');
-        c.width = img.width;
-        c.height = img.height;
-        c.getContext('2d').drawImage(img, 0, 0);
-        var link = document.createElement('a');
-        link.download = username + '_avatar.png';
-        link.href = c.toDataURL('image/png');
-        link.click();
-    }};
-    img.src = avatarDownload;
+    fetch(avatarUrl)
+        .then(function(r) {{ return r.blob(); }})
+        .then(function(blob) {{
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.download = username + '_avatar.png';
+            a.href = url;
+            a.click();
+            URL.revokeObjectURL(url);
+        }})
+        .catch(function() {{}});
 }}
 function downloadAll() {{
     capture('report-1', username + '_1_profile');
