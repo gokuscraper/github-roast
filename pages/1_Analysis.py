@@ -135,7 +135,7 @@ def _build_report_html(result: dict, user, summary: dict) -> str:
 
     section1 = f"""
     <div id="report-1" style="padding:20px;">
-        <div style="text-align:center;font-size:1.6rem;font-weight:800;margin-bottom:1rem;color:#1f2937;">{title_text}</div>
+        <div style="text-align:center;font-size:1.6rem;font-weight:800;margin-bottom:1rem;color:#dc2626;">{title_text}</div>
         <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem;">
             <img src="{avatar_url}" style="width:56px;height:56px;border-radius:50%;" onerror="this.style.display='none'">
             <div>
