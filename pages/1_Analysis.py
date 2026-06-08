@@ -240,6 +240,7 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-seri
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
 var username = '{login}';
+var avatarUrl = '{avatar_url}';
 function capture(id, name) {{
     html2canvas(document.getElementById(id), {{ scale:2, useCORS:true }})
         .then(function(canvas) {{
@@ -250,11 +251,26 @@ function capture(id, name) {{
         }})
         .catch(function(err) {{ document.getElementById('err').textContent = '截图失败: ' + err.message; }});
 }}
+function downloadAvatar() {{
+    var img = new Image();
+    img.onload = function() {{
+        var c = document.createElement('canvas');
+        c.width = img.width;
+        c.height = img.height;
+        c.getContext('2d').drawImage(img, 0, 0);
+        var link = document.createElement('a');
+        link.download = username + '_avatar.png';
+        link.href = c.toDataURL('image/png');
+        link.click();
+    }};
+    img.src = avatarUrl;
+}}
 function downloadAll() {{
     capture('report-1', username + '_1_profile');
     setTimeout(function() {{ capture('report-2', username + '_2_analysis_a'); }}, 500);
     setTimeout(function() {{ capture('report-3', username + '_3_analysis_b'); }}, 1000);
     setTimeout(function() {{ capture('report-4', username + '_4_analysis_c'); }}, 1500);
+    setTimeout(function() {{ downloadAvatar(); }}, 2000);
 }}
 </script>
 <p id="err" style="color:red;text-align:center;padding:0 20px 20px;"></p>
