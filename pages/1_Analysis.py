@@ -234,7 +234,7 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-seri
 var username = '{login}';
 var avatarUrl = '{avatar_url}';
 function capture(id, name) {{
-    html2canvas(document.getElementById(id), {{ scale:2, useCORS:true }})
+    return html2canvas(document.getElementById(id), {{ scale:2, useCORS:true }})
         .then(function(canvas) {{
             var link = document.createElement('a');
             link.download = name + '.png';
@@ -244,12 +244,12 @@ function capture(id, name) {{
         .catch(function(err) {{ document.getElementById('err').textContent = '截图失败: ' + err.message; }});
 }}
 function downloadAvatar() {{
-    fetch(avatarUrl)
+    return fetch(avatarUrl)
         .then(function(r) {{ return r.blob(); }})
         .then(function(blob) {{
             var url = URL.createObjectURL(blob);
             var a = document.createElement('a');
-            a.download = username + '_avatar.png';
+            a.download = username + '_1_avatar.png';
             a.href = url;
             a.click();
             URL.revokeObjectURL(url);
@@ -257,11 +257,11 @@ function downloadAvatar() {{
         .catch(function() {{}});
 }}
 function downloadAll() {{
-    capture('report-1', username + '_1_profile');
-    setTimeout(function() {{ capture('report-2', username + '_2_analysis_a'); }}, 500);
-    setTimeout(function() {{ capture('report-3', username + '_3_analysis_b'); }}, 1000);
-    setTimeout(function() {{ capture('report-4', username + '_4_analysis_c'); }}, 1500);
-    setTimeout(function() {{ downloadAvatar(); }}, 2000);
+    downloadAvatar()
+        .then(function() {{ return capture('report-1', username + '_2_profile'); }})
+        .then(function() {{ return capture('report-2', username + '_3_analysis_a'); }})
+        .then(function() {{ return capture('report-3', username + '_4_analysis_b'); }})
+        .then(function() {{ return capture('report-4', username + '_5_analysis_c'); }});
 }}
 </script>
 <p id="err" style="color:red;text-align:center;padding:0 20px 20px;"></p>
