@@ -256,11 +256,16 @@ function downloadAvatar() {{
         }})
         .catch(function() {{}});
 }}
+function delay(ms) {{ return new Promise(function(r) {{ setTimeout(r, ms); }}); }}
 function downloadAll() {{
     downloadAvatar()
+        .then(function() {{ return delay(300); }})
         .then(function() {{ return capture('report-1', username + '_2_profile'); }})
+        .then(function() {{ return delay(300); }})
         .then(function() {{ return capture('report-2', username + '_3_analysis_a'); }})
+        .then(function() {{ return delay(300); }})
         .then(function() {{ return capture('report-3', username + '_4_analysis_b'); }})
+        .then(function() {{ return delay(300); }})
         .then(function() {{ return capture('report-4', username + '_5_analysis_c'); }});
 }}
 </script>
