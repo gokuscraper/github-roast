@@ -15,6 +15,7 @@ def fetch_repos(username: str) -> list[GitHubRepo]:
         "per_page": PER_PAGE_REPOS,
         "sort": SORT_REPOS,
         "direction": DIRECTION_REPOS,
+        "type": "all",
     })
     return parse_repos(raw)
 
@@ -32,6 +33,7 @@ def fetch_all(username: str) -> tuple[GitHubUser, list[GitHubRepo], list[GitHubE
         "per_page": PER_PAGE_REPOS,
         "sort": SORT_REPOS,
         "direction": DIRECTION_REPOS,
+        "type": "all",
     })
     events_raw = get(EVENTS_API.format(username=username), params={
         "per_page": PER_PAGE_EVENTS,
