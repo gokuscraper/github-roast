@@ -100,8 +100,7 @@ with col_btn:
             try:
                 from github_scraper import fetch_all
 
-                with st.spinner(_("spinner_scraping")):
-                    st.info(_("scrape_user") + f" @{username}...")
+                with st.spinner(_("spinner_scraping") + f" @{username}..."):
                     user, repos, events = fetch_all(username)
 
                 st.session_state.scraped_user = user
