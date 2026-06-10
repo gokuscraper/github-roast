@@ -2,8 +2,8 @@ name: Daily Restart
 
 on:
   schedule:
-    # 每天北京时间 00:00 执行（UTC 时间 16:00）
-    - cron: '0 16 * * *'
+    # 每天北京时间 03:00 执行（UTC 时间 19:00）
+    - cron: '0 19 * * *'
   workflow_dispatch:  # 允许手动触发
 
 jobs:
